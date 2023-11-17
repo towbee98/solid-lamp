@@ -1,10 +1,12 @@
+const compression = require("compression");
 const express = require("express");
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+app.use(compression());
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Response returned successfully" });
 });
@@ -26,21 +28,14 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
     let openingRatioBalance;
     for (const splitEntity of sortedSplitInfo) {
       let splitAmount = 0;
-
       if (splitEntity.SplitType === "FLAT") {
         splitAmount = splitEntity.SplitValue;
         // Update the balance for the next iteration
         // Check constraints
-        if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
-          throw new Error("Invalid split amount");
-        }
       } else if (splitEntity.SplitType === "PERCENTAGE") {
         splitAmount = (splitEntity.SplitValue / 100) * balance;
         // Update the balance for the next iteration
         // Check constraints
-        if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
-          throw new Error("Invalid split amount");
-        }
       } else if (splitEntity.SplitType === "RATIO") {
         // Calculate the total ratio sum
 
@@ -55,11 +50,11 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
         splitAmount =
           (splitEntity.SplitValue / totalRatio) * openingRatioBalance;
         // Check constraints
-        if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
-          throw new Error("Invalid split amount");
-        }
       }
 
+      if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
+        throw new Error("Invalid split amount");
+      }
       splitBreakdown.push({
         SplitEntityId: splitEntity.SplitEntityId,
         Amount: splitAmount,
