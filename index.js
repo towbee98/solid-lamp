@@ -13,7 +13,10 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
     const { ID, Amount, SplitInfo } = req.body;
     let balance = Amount;
     const splitBreakdown = [];
-
+    if (SplitInfo.length > 20)
+      throw new Error("Can only contain maximum of 20 entries");
+    if (SplitInfo.length < 1)
+      throw new Error("Can only contain minimum of 1 entry");
     // Sorting SplitInfo based on precedence rules
     const sortedSplitInfo = SplitInfo.sort((a, b) => {
       const precedenceOrder = { FLAT: 1, PERCENTAGE: 2, RATIO: 3 };
@@ -31,14 +34,6 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
         if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
           throw new Error("Invalid split amount");
         }
-
-        splitBreakdown.push({
-          SplitEntityId: splitEntity.SplitEntityId,
-          Amount: splitAmount, // Rounding to 2 decimal places
-        });
-
-        //   // Update the balance for the next iteration
-        balance -= splitAmount;
       } else if (splitEntity.SplitType === "PERCENTAGE") {
         splitAmount = (splitEntity.SplitValue / 100) * balance;
         // Update the balance for the next iteration
@@ -46,13 +41,6 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
         if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
           throw new Error("Invalid split amount");
         }
-        splitBreakdown.push({
-          SplitEntityId: splitEntity.SplitEntityId,
-          Amount: splitAmount, // Rounding to 2 decimal places
-        });
-
-        //   // Update the balance for the next iteration
-        balance -= splitAmount;
       } else if (splitEntity.SplitType === "RATIO") {
         // Calculate the total ratio sum
 
@@ -70,15 +58,15 @@ app.post("/api/v1/split-payments/compute", (req, res) => {
         if (splitAmount < 0 || splitAmount > Amount || splitAmount > balance) {
           throw new Error("Invalid split amount");
         }
-
-        splitBreakdown.push({
-          SplitEntityId: splitEntity.SplitEntityId,
-          Amount: splitAmount,
-        });
-
-        //   // Update the balance for the next iteration
-        balance -= splitAmount;
       }
+
+      splitBreakdown.push({
+        SplitEntityId: splitEntity.SplitEntityId,
+        Amount: splitAmount,
+      });
+
+      //   // Update the balance for the next iteration
+      balance -= splitAmount;
     }
 
     if (balance < 0) {
